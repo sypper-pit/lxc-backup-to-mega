@@ -1,6 +1,6 @@
 #!/bin/bash
-set -e
-set -x
+#set -e
+#set -x
 
 trap 'echo "Error occurred in line $LINENO. Exiting..."; exit 1' ERR
 
