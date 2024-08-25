@@ -2,85 +2,83 @@
 set -e
 set -x
 
-trap 'echo "An error occurred. Exiting..."; exit 1' ERR
+trap 'echo "Error occurred in line $LINENO. Exiting..."; exit 1' ERR
 
-CONTAINER="you-lxc-conteiner"
+CONTAINER="name-lxc-container"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TMP_DIR="${SCRIPT_DIR}/tmp"
-LOCAL_BACKUP_COUNT=3  # Number of local backups to keep
-MEGA_BACKUP_COUNT=3   # Number of backups to keep on MEGA
-SNAPSHOT_COUNT=3      # Number of snapshots to keep in LXC
+LOCAL_BACKUP_COUNT=3
+MEGA_BACKUP_COUNT=3
+SNAPSHOT_COUNT=3
 
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
 
-echo "Starting backup process for container: $CONTAINER"
-echo "Current date and time: $(date)"
-echo "LXC version: $(lxc --version)"
-echo "Container status:"
+log "Starting backup process for container: $CONTAINER"
+log "LXC version: $(lxc --version)"
+log "Container status:"
 lxc info $CONTAINER | grep Status
 
-
-# Check for required commands
 for cmd in lxc xz mega-put mega-ls mega-mkdir; do
     if ! command -v $cmd &> /dev/null; then
-        echo "Error: $cmd is not installed or not in PATH"
+        log "Error: $cmd is not installed or not in PATH"
         exit 1
     fi
 done
 
-# Check if the container exists
 if ! lxc info $CONTAINER &>/dev/null; then
-    echo "Container $CONTAINER does not exist"
+    log "Container $CONTAINER does not exist"
     exit 1
 fi
 
 mkdir -p "$TMP_DIR"
 
-# Check and create backup folder on MEGA
 if ! mega-ls / | grep -q '^backup$'; then
-    echo "Backup folder not found on MEGA. Creating..."
+    log "Backup folder not found on MEGA. Creating..."
     if mega-mkdir /backup; then
-        echo "Backup folder successfully created on MEGA."
+        log "Backup folder successfully created on MEGA."
     else
-        echo "Error creating backup folder on MEGA. Exiting..."
+        log "Error creating backup folder on MEGA. Exiting..."
         exit 1
     fi
 else
-    echo "Backup folder already exists on MEGA."
+    log "Backup folder already exists on MEGA."
 fi
 
 cleanup_old_snapshots() {
-    echo "Cleaning up old snapshots..."
+    log "Cleaning up old snapshots..."
     
-    # Check if there are any snapshots
     if ! lxc info $CONTAINER | grep -q "Snapshots:"; then
-        echo "No snapshots found for $CONTAINER"
+        log "No snapshots found for $CONTAINER"
         return
     fi
     
     snapshots=($(lxc info $CONTAINER | sed -n '/Snapshots:/,/^$/p' | grep '|' | awk -F'|' '{print $2}' | awk '{$1=$1};1' | grep -v '^NAME'))
     
     if [ ${#snapshots[@]} -eq 0 ]; then
-        echo "No snapshots found for $CONTAINER"
+        log "No snapshots found for $CONTAINER"
         return
     fi
     
-    echo "Current number of snapshots: ${#snapshots[@]}"
+    log "Current number of snapshots: ${#snapshots[@]}"
     
     if [ ${#snapshots[@]} -gt $SNAPSHOT_COUNT ]; then
         to_delete=$(( ${#snapshots[@]} - $SNAPSHOT_COUNT ))
-        echo "Deleting $to_delete old snapshots"
+        log "Deleting $to_delete old snapshots"
         for ((i=0; i<$to_delete; i++)); do
-            echo "Deleting snapshot: ${snapshots[i]}"
-            lxc delete "$CONTAINER/${snapshots[i]}"
+            log "Deleting snapshot: ${snapshots[i]}"
+            if ! lxc delete "$CONTAINER/${snapshots[i]}"; then
+                log "Failed to delete snapshot ${snapshots[i]}"
+            fi
         done
     else
-        echo "No need to delete snapshots. Current count is within the limit."
+        log "No need to delete snapshots. Current count is within the limit."
     fi
 }
 
-
 cleanup_old_files() {
-    echo "Cleaning up old files in $TMP_DIR..."
+    log "Cleaning up old files in $TMP_DIR..."
     find "$TMP_DIR" -name "${CONTAINER}-*.tar.gz*" -type f -delete
 }
 
@@ -90,47 +88,75 @@ create_and_upload_snapshot() {
     local archive_name="${CONTAINER}-${timestamp}.tar.gz"
     local archive_path="${TMP_DIR}/${archive_name}"
 
-    echo "Creating snapshot for $CONTAINER..."
-    lxc snapshot $CONTAINER "${snapshot_name}"
+    log "Creating snapshot for $CONTAINER..."
+    if ! lxc snapshot $CONTAINER "${snapshot_name}"; then
+        log "Failed to create snapshot"
+        return 1
+    fi
 
-    echo "Exporting snapshot to $archive_path..."
-    lxc export "${CONTAINER}" "$archive_path" --instance-only
+    log "Exporting snapshot to $archive_path..."
+    if ! lxc export "${CONTAINER}" "$archive_path" --instance-only; then
+        log "Failed to export snapshot"
+        return 1
+    fi
 
     if [ ! -f "$archive_path" ]; then
-        echo "Failed to create backup file"
+        log "Failed to create backup file"
         return 1
     fi
 
-    echo "Compressing $archive_path..."
-    xz -9 "$archive_path"
+    log "Compressing $archive_path..."
+    if ! xz -9 "$archive_path"; then
+        log "Failed to compress backup file"
+        return 1
+    fi
     local compressed_archive="${archive_path}.xz"
 
-    echo "Uploading $compressed_archive to MEGA..."
+    log "Uploading $compressed_archive to MEGA..."
     if ! mega-put "$compressed_archive" /backup/; then
-        echo "Failed to upload $compressed_archive to MEGA"
+        log "Failed to upload $compressed_archive to MEGA"
         return 1
     fi
 
-    echo "Snapshot created and uploaded successfully."
+    log "Snapshot created and uploaded successfully."
 }
 
 cleanup_old_backups() {
-    echo "Cleaning up old backups..."
+    log "Cleaning up old backups..."
     
     # Clean up local backups
-    local_backups=($(ls -t ${TMP_DIR}/${CONTAINER}-*.tar.gz.xz))
+    log "Searching for local backups in ${TMP_DIR}"
+    local_backups=($(find "${TMP_DIR}" -name "${CONTAINER}-*.tar.gz.xz" -type f -printf '%T@ %p\n' | sort -rn | cut -d' ' -f2-))
+    
+    log "Found ${#local_backups[@]} local backups"
+    
     if [ ${#local_backups[@]} -gt $LOCAL_BACKUP_COUNT ]; then
+        log "Keeping $LOCAL_BACKUP_COUNT most recent local backups"
         for ((i=$LOCAL_BACKUP_COUNT; i<${#local_backups[@]}; i++)); do
+            log "Deleting local backup: ${local_backups[i]}"
             rm "${local_backups[i]}"
         done
+    else
+        log "No local backups need to be deleted"
     fi
 
     # Clean up MEGA backups
-    mega_backups=($(mega-ls /backup/ | grep ${CONTAINER} | awk '{print $1}'))
+    log "Cleaning up old backups on MEGA..."
+    mega_backups=($(mega-ls /backup/ | grep ${CONTAINER} | sort -r))
+    log "Found ${#mega_backups[@]} backups on MEGA"
+    
     if [ ${#mega_backups[@]} -gt $MEGA_BACKUP_COUNT ]; then
+        log "Keeping $MEGA_BACKUP_COUNT most recent backups on MEGA"
         for ((i=$MEGA_BACKUP_COUNT; i<${#mega_backups[@]}; i++)); do
-            mega-rm "/backup/${mega_backups[i]}"
+            log "Deleting MEGA backup: /backup/${mega_backups[i]}"
+            if mega-rm "/backup/${mega_backups[i]}"; then
+                log "Successfully deleted MEGA backup: ${mega_backups[i]}"
+            else
+                log "Failed to delete MEGA backup: ${mega_backups[i]}"
+            fi
         done
+    else
+        log "No MEGA backups need to be deleted"
     fi
 }
 
@@ -139,4 +165,4 @@ cleanup_old_files
 create_and_upload_snapshot
 cleanup_old_backups
 
-echo "Backup process completed."
+log "Backup process completed."
