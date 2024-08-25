@@ -1,10 +1,10 @@
 #!/bin/bash
-#set -e
+set -e
 #set -x
 
 trap 'echo "Error occurred in line $LINENO. Exiting..."; exit 1' ERR
 
-CONTAINER="name-lxc-container"
+CONTAINER="testm0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TMP_DIR="${SCRIPT_DIR}/tmp"
 LOCAL_BACKUP_COUNT=3
@@ -124,9 +124,16 @@ create_and_upload_snapshot() {
 cleanup_old_backups() {
     log "Cleaning up old backups..."
     
+    # Ensure backup directory exists
+    mkdir -p "${SCRIPT_DIR}/backup"
+    
+    # Move files from tmp to backup
+    log "Moving files from ${TMP_DIR} to ${SCRIPT_DIR}/backup"
+    mv "${TMP_DIR}"/${CONTAINER}-*.tar.gz.xz "${SCRIPT_DIR}/backup/" 2>/dev/null || true
+    
     # Clean up local backups
-    log "Searching for local backups in ${TMP_DIR}"
-    local_backups=($(find "${TMP_DIR}" -name "${CONTAINER}-*.tar.gz.xz" -type f -printf '%T@ %p\n' | sort -rn | cut -d' ' -f2-))
+    log "Cleaning up local backups in ${SCRIPT_DIR}/backup"
+    local_backups=($(find "${SCRIPT_DIR}/backup" -name "${CONTAINER}-*.tar.gz.xz" -type f -printf '%T@ %p\n' | sort -rn | cut -d' ' -f2-))
     
     log "Found ${#local_backups[@]} local backups"
     
