@@ -4,7 +4,7 @@ set -e
 
 trap 'echo "Error occurred in line $LINENO. Exiting..."; exit 1' ERR
 
-CONTAINER="testm0"
+CONTAINER="name-lxc-container"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TMP_DIR="${SCRIPT_DIR}/tmp"
 LOCAL_BACKUP_COUNT=3
