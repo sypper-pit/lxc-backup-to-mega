@@ -15,7 +15,8 @@ lxc --version
 1. Удалите текущую версию LXC (если она уже установлена):
 
    ```bash
-   sudo snap remove lxc
+   sudo snap remove lxd
+   sudo apt remove lxc lxd
    ```
 
 2. Установите LXC версии 4 через канал `4.x/stable`:
