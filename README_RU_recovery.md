@@ -25,7 +25,7 @@
 Используйте `mega-get` для скачивания архива с облачного хранилища MEGA. Предположим, что у вас есть ссылка или путь к файлу на MEGA.
 
 ```bash
-mega-get /backup/money-20240925_170344.tar.gz.xz /путь/до/локальной/папки/
+mega-get /backup/lxc-container-20200925_170000.tar.gz.xz /путь/до/локальной/папки/
 ```
 
 ### 3. Распаковка архива
@@ -34,7 +34,7 @@ mega-get /backup/money-20240925_170344.tar.gz.xz /путь/до/локально
 
 ```bash
 cd /путь/до/локальной/папки/
-xz -d money-20240925_170344.tar.gz.xz
+xz -d lxc-container-20200925_170000.tar.gz.xz
 ```
 
 После выполнения этой команды у вас появится файл `money-20240925_170344.tar.gz`.
@@ -44,13 +44,13 @@ xz -d money-20240925_170344.tar.gz.xz
 Используйте команду `lxc import` для восстановления контейнера из архива. Вы можете задать новое имя для контейнера или использовать исходное.
 
 ```bash
-lxc import money-20240925_170344.tar.gz --alias dvd
+lxc import lxc-container-20200925_170000.tar.gz.xz --alias lxc-container
 ```
 
 **Пояснения:**
 
-- `money-20240925_170344.tar.gz` — путь к вашему распакованному архиву.
-- `--alias dvd` — задает имя для восстановленного контейнера. Если вы хотите использовать другое имя, замените `dvd` на желаемое.
+- `lxc-container-20200925_170000.tar.gz.xz` — путь к вашему распакованному архиву.
+- `--alias lxc-container` — задает имя для восстановленного контейнера. Если вы хотите использовать другое имя, замените `dvd` на желаемое.
 
 ### 5. Проверка восстановленного контейнера
 
@@ -65,7 +65,7 @@ lxc list
 Также можно проверить подробную информацию о контейнере:
 
 ```bash
-lxc info dvd
+lxc info lxc-container
 ```
 
 ### 6. Запуск контейнера
@@ -73,7 +73,7 @@ lxc info dvd
 Если контейнер остановлен, запустите его:
 
 ```bash
-lxc start dvd
+lxc start lxc-container
 ```
 
 ### 7. Дополнительные шаги
@@ -83,7 +83,7 @@ lxc start dvd
 - **Обновление контейнера**: После восстановления рекомендуется обновить пакеты внутри контейнера:
 
   ```bash
-  lxc exec dvd -- sudo apt update && sudo apt upgrade -y
+  lxc exec lxc-container -- sudo apt update && sudo apt upgrade -y
   ```
 
 ### Пример полного процесса
@@ -94,24 +94,24 @@ sudo apt update
 sudo apt install lxc xz
 
 # Шаг 2: Скачивание архива с MEGA
-mega-get /backup/money-20240925_170344.tar.gz.xz /home/user/backups/
+mega-get /backup/lxc-container-20200925_170000.tar.gz.xz /home/user/backups/
 
 # Шаг 3: Распаковка архива
 cd /home/user/backups/
-xz -d money-20240925_170344.tar.gz.xz
+xz -d lxc-container-20200925_170000.tar.gz.xz
 
 # Шаг 4: Импорт контейнера
-lxc import money-20240925_170344.tar.gz --alias dvd
+lxc import lxc-container-20200925_170000.tar.gz.xz --alias lxc-container
 
 # Шаг 5: Проверка контейнера
 lxc list
-lxc info dvd
+lxc info lxc-container
 
 # Шаг 6: Запуск контейнера
-lxc start dvd
+lxc start lxc-container
 
 # Шаг 7: Обновление контейнера
-lxc exec dvd -- sudo apt update && sudo apt upgrade -y
+lxc exec lxc-container -- sudo apt update && sudo apt upgrade -y
 ```
 
 ### Примечания
