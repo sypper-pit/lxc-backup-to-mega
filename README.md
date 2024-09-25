@@ -21,7 +21,7 @@ This Bash script automates the process of creating, managing, and uploading back
    - Checks for required commands and the existence of the specified container.
 
 2. **MEGA Setup**: 
-   - Ensures a backup folder exists on MEGA.
+   - Ensures a backup folder exists on MEGA. https://mega.io/ru/cmd#download
 
 3. **Snapshot Management**:
    - Removes old snapshots, keeping only the specified number.
