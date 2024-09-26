@@ -24,6 +24,11 @@ lxc --version
    ```bash
    sudo snap install lxd --channel=4.0/stable
    ```
+2. Перезагрузить:
+
+   ```bash
+   reboot
+   ```
 
 ### Проверка установленной версии:
 Чтобы убедиться, что установлена правильная версия LXC:
