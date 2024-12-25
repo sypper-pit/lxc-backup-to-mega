@@ -14,12 +14,20 @@ lxc info $container_name | sed -n '/Snapshots:/,/^$/p' | tail -n +2
 read -p "Enter snapshot name to save: " snapshot_name
 
 # Формирование имени файла для сохранения
-filename="${container_name}_${snapshot_name}_$(date +"%Y%m%d_%H%M%S")_$(lxc version | awk '/Server version:/ {print $3}')_$(hostname -I | awk '{print $1}')"
+filename="${container_name}_${snapshot_name}_$(date +"%Y%m%d_%H%M%S")_$(lxc version | awk '/Server version:/ {print $3}')_$(hostname -I | awk '{print $1}' | tr '.' '-')"
 
 # Сохранение снапшота как образа
 lxc publish $container_name/$snapshot_name --alias $filename
 
 # Экспорт образа в текущую директорию
-lxc image export $filename $export_path/$filename
+lxc image export $filename "$export_path/${filename}.tar.gz"
 
-echo "Snapshot exported to: $export_path/$filename.tar.gz"
+# Проверка, создался ли файл
+if [ -f "$export_path/${filename}.tar.gz" ]; then
+    echo "Snapshot exported to: $export_path/${filename}.tar.gz"
+else
+    echo "Error: Failed to create export file."
+fi
+
+# Удаление временного образа
+lxc image delete $filename
