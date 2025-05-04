@@ -15,6 +15,10 @@ This Bash script automates the process of creating, managing, and uploading back
 - **Compression**: Uses `xz` compression for efficient storage and transfer.
 
 #### How It Works
+For XZ-arcive
+```
+sudo apt install xz -y
+```
 
 1. **Initialization**: 
    - Sets up error handling and logging.
